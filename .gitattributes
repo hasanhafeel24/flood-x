@@ -1,0 +1,23 @@
+# FLOOD-X Git Attributes — normalize line endings
+* text=auto eol=lf
+
+# Force LF for these types
+*.py   text eol=lf
+*.ts   text eol=lf
+*.tsx  text eol=lf
+*.js   text eol=lf
+*.json text eol=lf
+*.yml  text eol=lf
+*.yaml text eol=lf
+*.md   text eol=lf
+*.css  text eol=lf
+*.html text eol=lf
+*.sh   text eol=lf
+
+# Binary files — no conversion
+*.png  binary
+*.jpg  binary
+*.svg  binary
+*.ico  binary
+*.woff binary
+*.woff2 binary
