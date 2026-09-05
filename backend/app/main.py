@@ -39,10 +39,18 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     # Create database tables if they don't exist (dev convenience)
     # In production, use: alembic upgrade head
+    # Graceful fallback: backend works in SIMULATION mode without PostgreSQL
     if settings.APP_ENV == "development":
-        async with engine.begin() as conn:
-            await conn.run_sync(Base.metadata.create_all)
-        log.info("database_tables_initialized")
+        try:
+            async with engine.begin() as conn:
+                await conn.run_sync(Base.metadata.create_all)
+            log.info("database_tables_initialized")
+        except Exception as db_err:
+            log.warning(
+                "database_unavailable_simulation_mode",
+                error=str(db_err),
+                mode="SYNTHETIC_SIMULATION — no persistence",
+            )
 
     log.info("flood_x_ready", host=settings.BACKEND_HOST, port=settings.BACKEND_PORT)
     yield

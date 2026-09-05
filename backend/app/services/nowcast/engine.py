@@ -39,6 +39,7 @@ from app.schemas import (
     RiskLevel,
 )
 from app.services.hydrology.engine import hydrology_engine, SYNTHETIC_CATCHMENTS
+from app.services.ml.predictor import ml_predictor
 from app.services.risk.engine import risk_engine, RiskInput
 
 log = structlog.get_logger(__name__)
@@ -134,28 +135,48 @@ class NowcastEngine:
                 # Future utilization also decays
                 future_util = util * decay * (1.0 + 0.2 * (h_min / 180.0))  # slight lag
 
-                # Depth estimate
-                depth_cm = _depth_from_runoff(
+                terrain_susceptibility = 1.0 - (cat.get("area_ha", 1000) / 2500.0)
+
+                # ── ML Prediction (XGBoost or rule-based fallback) ─────────────
+                ml_pred = ml_predictor.predict(
+                    rainfall_intensity_mm_hr=future_intensity,
+                    rainfall_duration_hr=h_min / 60.0 if h_min > 0 else 0.25,
+                    accumulated_rainfall_mm=accumulated + future_intensity * h_min / 60.0,
+                    drainage_utilization_pct=future_util,
+                    drainage_surcharging_nodes=int(future_util > 100),
+                    catchment_imperviousness=cat["imperviousness"],
+                    catchment_cn=cat["cn"],
+                    catchment_area_ha=cat["area_ha"],
+                    terrain_elevation_m=cat.get("elev", 5.0),
+                    terrain_slope_pct=2.0,  # synthetic estimate
+                    terrain_susceptibility=terrain_susceptibility,
+                    antecedent_moisture_mm=accumulated * 0.3,
+                    time_since_last_rain_hr=0.0,
+                    horizon_minutes=h_min,
+                )
+
+                # ML depth takes priority; blend with physics-based for stability
+                physics_depth = _depth_from_runoff(
                     cat_runoff.rainfall_excess_mm,
                     cat_runoff.surface_accumulation_mm,
                 )
-                # Depth has inertia — only decreases slowly
+                depth_cm = ml_pred.flood_depth_cm * 0.7 + physics_depth * 0.3
                 if h_min > 0:
                     depth_cm = max(depth_cm, prev_depth * 0.85)
                 prev_depth = depth_cm
 
-                # ML risk score (rule-based fallback for now — ML wires in M8)
+                # Risk scoring uses ML probability
                 risk_inp = RiskInput(
                     location_id=cat["id"],
-                    flood_probability=min(1.0, depth_cm / 60.0),
+                    flood_probability=ml_pred.flood_probability,
                     drainage_utilization_pct=future_util,
                     predicted_depth_cm=depth_cm,
                     rainfall_intensity_mm_hr=future_intensity,
-                    terrain_susceptibility=1.0 - (cat.get("area_ha", 1000) / 2500.0),
+                    terrain_susceptibility=terrain_susceptibility,
                 )
                 risk_out = risk_engine.score(risk_inp)
-                prob = risk_inp.flood_probability
-                confidence = _confidence_from_horizon(h_min, intensity)
+                prob = ml_pred.flood_probability
+                confidence = ml_pred.confidence
 
                 horizons.append(NowcastHorizon(
                     horizon_minutes=h_min,
