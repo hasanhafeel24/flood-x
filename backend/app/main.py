@@ -26,6 +26,7 @@ from app.routers import (
     simulation,
     system,
     decisions,
+    demo,
 )
 from app.websocket.manager import ws_manager
 
@@ -98,6 +99,7 @@ def create_app() -> FastAPI:
     app.include_router(simulation.router, prefix=prefix, tags=["simulation"])
     app.include_router(system.router, prefix=prefix, tags=["system"])
     app.include_router(decisions.router, prefix=prefix, tags=["decisions"])
+    app.include_router(demo.router, prefix=prefix, tags=["demo"])
 
     # ── WebSocket ───────────────────────────────────────────────────────────────
     @app.websocket("/ws")

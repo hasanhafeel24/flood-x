@@ -30,6 +30,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY app/ ./app/
 COPY run.py .
 
+# Create models dir and copy pre-trained models if present
+# (can also be volume-mounted at runtime)
+RUN mkdir -p /app/models
+
 # Create non-root user
 RUN useradd -m -u 1000 floodx && chown -R floodx:floodx /app
 USER floodx

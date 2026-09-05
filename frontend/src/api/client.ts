@@ -70,4 +70,15 @@ export const floodxApi = {
   decisions: {
     current: () => api.get('/decisions/current').then(r => r.data),
   },
+
+  demo: {
+    start:  () => api.post('/demo/start').then(r => r.data),
+    status: () => api.get('/demo/status').then(r => r.data),
+    reset:  () => api.post('/demo/reset').then(r => r.data),
+    phases: () => api.get('/demo/phases').then(r => r.data),
+  },
+
+  graph: {
+    info: () => api.get('/routes/graph-info').then(r => r.data),
+  },
 }
