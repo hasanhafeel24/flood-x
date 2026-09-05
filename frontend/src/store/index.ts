@@ -44,6 +44,16 @@ export interface DrainageSummary {
   bottleneck_nodes: string[]
 }
 
+export interface NowcastZone {
+  location_id: string
+  location_name: string
+  lat: number
+  lon: number
+  risk: RiskLevel
+  depth_cm: number
+  prob_60min: number
+}
+
 interface FloodXState {
   // Connection
   wsConnected: boolean
@@ -62,6 +72,9 @@ interface FloodXState {
 
   // Alerts
   alerts: Alert[]
+
+  // Nowcast zones (real-time from WS tick)
+  nowcastZones: NowcastZone[]
 
   // UI
   selectedLocationId: string | null
@@ -88,6 +101,7 @@ export const useFloodXStore = create<FloodXState>((set) => ({
   phase: 'System Initialising',
   drainage: null,
   alerts: [],
+  nowcastZones: [],
   selectedLocationId: null,
   activeLayer: 'flood_risk',
 
@@ -111,9 +125,10 @@ export const useFloodXStore = create<FloodXState>((set) => ({
         alerts: msg.alerts ?? [],
         phase: msg.phase ?? '',
         dataMode: msg.data_mode ?? 'SYNTHETIC_SIMULATION',
+        nowcastZones: msg.nowcast_zones ?? [],
       })
     } else if (msg.type === 'simulation_reset') {
-      set({ simulation: null, rainfallIntensity: 0, alerts: [], phase: 'System Normal' })
+      set({ simulation: null, rainfallIntensity: 0, alerts: [], phase: 'System Normal', nowcastZones: [] })
     }
   },
 }))

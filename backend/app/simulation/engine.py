@@ -171,6 +171,26 @@ class SimulationEngine:
             from app.services.alerts.engine import alert_engine
             alerts = alert_engine.generate(intensity, drainage, self._step)
 
+            # Nowcast zone summary (lightweight — top-5 by risk)
+            nowcast_zones = []
+            try:
+                nowcasts = await nowcast_engine.generate_nowcasts()
+                for nc in nowcasts[:5]:
+                    nowcast_zones.append({
+                        "location_id": nc.location_id,
+                        "location_name": nc.location_name,
+                        "lat": nc.latitude,
+                        "lon": nc.longitude,
+                        "risk": nc.current_risk,
+                        "depth_cm": nc.current_depth_cm,
+                        "prob_60min": next(
+                            (h.flood_probability for h in nc.horizons if h.horizon_minutes == 60),
+                            0.0,
+                        ),
+                    })
+            except Exception as e:
+                log.warning("nowcast_in_tick_failed", error=str(e))
+
             # Broadcast to all WebSocket clients
             await ws_manager.broadcast({
                 "type": "simulation_tick",
@@ -189,6 +209,7 @@ class SimulationEngine:
                     "bottleneck_nodes": drainage.bottleneck_nodes,
                 },
                 "alerts": [a.model_dump() for a in alerts[:5]],
+                "nowcast_zones": nowcast_zones,
                 "phase": phase_label,
             })
 
