@@ -66,4 +66,8 @@ export const floodxApi = {
   system: {
     status: () => api.get('/system/status').then(r => r.data),
   },
+
+  decisions: {
+    current: () => api.get('/decisions/current').then(r => r.data),
+  },
 }
