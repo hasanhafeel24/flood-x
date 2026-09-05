@@ -1,0 +1,69 @@
+# ==============================================================================
+# FLOOD-X Backend Dependencies
+# Python 3.14 / 3.11 compatible
+# Last updated: 2026-09-05
+# ==============================================================================
+
+# ── Core API Framework ─────────────────────────────────────────────────────────
+fastapi==0.115.12
+uvicorn[standard]==0.34.3
+websockets==15.0.1
+python-multipart==0.0.20
+
+# ── Data Validation ────────────────────────────────────────────────────────────
+pydantic==2.11.3
+pydantic-settings==2.9.1
+email-validator==2.2.0
+
+# ── Database ───────────────────────────────────────────────────────────────────
+sqlalchemy==2.0.41
+alembic==1.15.2
+psycopg2-binary==2.9.10
+geoalchemy2==0.17.1
+asyncpg==0.30.0
+
+# ── Scientific / Numerical ────────────────────────────────────────────────────
+numpy==2.2.4
+scipy==1.15.2
+pandas==2.2.3
+
+# ── Geospatial ─────────────────────────────────────────────────────────────────
+# NOTE: geopandas and rasterio require GDAL.
+# On Windows, install via: pip install geopandas rasterio --find-links https://girder.github.io/large_image_wheels
+# In Docker (Linux), standard pip install works.
+geopandas==1.0.1
+shapely==2.0.7
+pyproj==3.7.1
+fiona==1.10.1
+
+# ── Graph ──────────────────────────────────────────────────────────────────────
+networkx==3.4.2
+
+# ── Machine Learning ──────────────────────────────────────────────────────────
+scikit-learn==1.6.1
+xgboost==2.1.4
+lightgbm==4.6.0
+joblib==1.4.2
+imbalanced-learn==0.13.0
+
+# ── Utilities ─────────────────────────────────────────────────────────────────
+python-dotenv==1.1.0
+structlog==25.1.0
+httpx==0.28.1
+tenacity==9.1.2
+orjson==3.10.16
+python-jose[cryptography]==3.4.0
+passlib[bcrypt]==1.7.4
+
+# ── Testing ────────────────────────────────────────────────────────────────────
+pytest==8.3.5
+pytest-asyncio==0.25.3
+pytest-cov==6.1.0
+httpx==0.28.1
+factory-boy==3.3.3
+
+# ── Development ────────────────────────────────────────────────────────────────
+black==25.1.0
+ruff==0.11.5
+mypy==1.15.0
+pre-commit==4.2.0
