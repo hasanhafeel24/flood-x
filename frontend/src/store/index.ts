@@ -57,6 +57,7 @@ export interface NowcastZone {
 interface FloodXState {
   // Connection
   wsConnected: boolean
+  wsStale: boolean          // true if no WS message for >15s
   dataMode: string
 
   // Rainfall
@@ -82,6 +83,7 @@ interface FloodXState {
 
   // Actions
   setWsConnected: (v: boolean) => void
+  setWsStale: (v: boolean) => void
   setRainfall: (intensity: number, accumulated: number) => void
   setSimulation: (s: SimulationState) => void
   setDrainage: (d: DrainageSummary) => void
@@ -94,6 +96,7 @@ interface FloodXState {
 
 export const useFloodXStore = create<FloodXState>((set) => ({
   wsConnected: false,
+  wsStale: false,
   dataMode: 'SYNTHETIC_SIMULATION',
   rainfallIntensity: 0,
   rainfallAccumulated: 0,
@@ -106,6 +109,7 @@ export const useFloodXStore = create<FloodXState>((set) => ({
   activeLayer: 'flood_risk',
 
   setWsConnected: (v) => set({ wsConnected: v }),
+  setWsStale: (v) => set({ wsStale: v }),
   setRainfall: (intensity, accumulated) =>
     set({ rainfallIntensity: intensity, rainfallAccumulated: accumulated }),
   setSimulation: (s) => set({ simulation: s }),

@@ -23,10 +23,19 @@ const NAV_ITEMS = [
 
 export default function Layout() {
   useWebSocket()
-  const { wsConnected, rainfallIntensity, simulation, alerts, dataMode } = useFloodXStore()
+  const { wsConnected, wsStale, rainfallIntensity, simulation, alerts, dataMode } = useFloodXStore()
   const location = useLocation()
 
   const criticalAlerts = alerts.filter(a => a.severity === 'EMERGENCY' || a.severity === 'WARNING')
+
+  // Compute connection quality label + style
+  const connState = !wsConnected
+    ? { label: 'DISCONNECTED', cls: 'text-risk-critical', icon: WifiOff, pulse: true }
+    : wsStale
+    ? { label: 'STALE',        cls: 'text-amber-400',    icon: Wifi,    pulse: true }
+    : simulation?.is_running
+    ? { label: 'SIMULATION',   cls: 'text-accent-cyan',  icon: Wifi,    pulse: false }
+    : { label: 'LIVE',         cls: 'text-risk-low',     icon: Wifi,    pulse: false }
 
   return (
     <div className="flex h-screen bg-surface-900 overflow-hidden">
@@ -45,16 +54,18 @@ export default function Layout() {
           </div>
         </div>
 
-        {/* Status bar */}
+        {/* Connection state bar — LIVE / SIMULATION / STALE / DISCONNECTED */}
         <div className="px-3 py-2 border-b border-surface-500 flex items-center gap-2">
-          {wsConnected
-            ? <Wifi size={12} className="text-risk-low" />
-            : <WifiOff size={12} className="text-risk-critical animate-pulse" />
-          }
-          <span className="text-xs text-slate-400">
-            {wsConnected ? 'Live' : 'Disconnected'}
+          <connState.icon
+            size={12}
+            className={`${connState.cls} ${connState.pulse ? 'animate-pulse' : ''}`}
+          />
+          <span className={`text-xs font-semibold font-mono ${connState.cls}`}>
+            {connState.label}
           </span>
-          <span className="ml-auto text-xs font-mono text-amber-400">SIM</span>
+          {wsStale && (
+            <span className="ml-auto text-[10px] text-amber-500">no data 15s+</span>
+          )}
         </div>
 
         {/* Navigation */}
