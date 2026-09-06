@@ -22,8 +22,25 @@ def _import_models() -> None:
 _import_models()
 
 
+def _make_async_db_url(url: str) -> str:
+    """
+    Normalise the DATABASE_URL to use the asyncpg driver.
+
+    Render (and most managed PostgreSQL providers) inject the URL with the
+    plain 'postgresql://' or 'postgres://' scheme.  SQLAlchemy's async engine
+    requires the '+asyncpg' variant.  This function performs a safe, idempotent
+    conversion so the app works regardless of how the platform sets the URL.
+    """
+    if url.startswith("postgres://"):
+        url = url.replace("postgres://", "postgresql+asyncpg://", 1)
+    elif url.startswith("postgresql://"):
+        url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
+    # Already has +asyncpg or another explicit driver — leave untouched
+    return url
+
+
 engine = create_async_engine(
-    settings.DATABASE_URL,
+    _make_async_db_url(settings.DATABASE_URL),
     echo=settings.APP_DEBUG,
     pool_pre_ping=True,
     pool_size=10,

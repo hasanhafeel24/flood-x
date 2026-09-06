@@ -29,6 +29,12 @@ config = context.config
 # Override sqlalchemy.url from environment if set
 db_url = os.getenv("DATABASE_SYNC_URL")
 if db_url:
+    # Normalise scheme: Render injects 'postgresql://' but Alembic needs
+    # the explicit psycopg2 driver to avoid asyncpg loading issues.
+    if db_url.startswith("postgres://"):
+        db_url = db_url.replace("postgres://", "postgresql+psycopg2://", 1)
+    elif db_url.startswith("postgresql://") and "+psycopg2" not in db_url:
+        db_url = db_url.replace("postgresql://", "postgresql+psycopg2://", 1)
     config.set_main_option("sqlalchemy.url", db_url)
 
 # Logging setup
