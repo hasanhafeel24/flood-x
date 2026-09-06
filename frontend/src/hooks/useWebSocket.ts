@@ -11,7 +11,7 @@ import { useEffect, useRef } from 'react'
 import { useFloodXStore } from '@/store'
 
 const WS_URL = import.meta.env.VITE_WS_URL
-  ?? `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.hostname}:8000/ws`
+  ?? `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/ws`
 
 const RECONNECT_DELAY_MS  = 3000
 const HEARTBEAT_INTERVAL  = 10_000   // 10s ping to keep proxy alive

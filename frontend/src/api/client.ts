@@ -1,11 +1,25 @@
 /**
  * FLOOD-X Typed API Client
  * All responses are labelled with data source type.
+ *
+ * Production: VITE_API_BASE_URL must be set to your Render backend URL.
+ * Development: Falls back to http://localhost:8000 (proxied by Vite dev server).
  */
 
 import axios from 'axios'
 
+// In production builds, VITE_API_BASE_URL must be set in Vercel Dashboard.
+// During local dev, Vite's proxy routes /api/* to localhost:8000 so the
+// BASE URL is unused — but we still set it for direct API calls.
 const BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
+
+if (import.meta.env.PROD && !import.meta.env.VITE_API_BASE_URL) {
+  console.error(
+    '[FLOOD-X] VITE_API_BASE_URL is not set in this production build! ' +
+    'All API calls will fail. Set this variable in your Vercel project settings ' +
+    'and redeploy.'
+  )
+}
 
 export const api = axios.create({
   baseURL: `${BASE}/api/v1`,

@@ -1,0 +1,133 @@
+# ==============================================================================
+# FLOOD-X — Render Deployment Configuration
+# ==============================================================================
+#
+# IMPORTANT: Before deploying, set all required environment variables in the
+# Render Dashboard → Service → Environment section.
+#
+# Architecture:
+#   Vercel Frontend  →  HTTPS  →  Render FastAPI Backend  →  PostgreSQL
+#
+# Deploy steps:
+#   1. Push this file to your repository
+#   2. Connect repository to Render
+#   3. Render detects render.yaml automatically
+#   4. Set the required environment variables in the Render Dashboard
+#   5. Run database migrations (see README.md → Database Setup)
+# ==============================================================================
+
+services:
+  - type: web
+    name: flood-x-api
+    runtime: python
+    region: oregon           # Change to: singapore, frankfurt, ohio as needed
+
+    # ── Build ─────────────────────────────────────────────────────────────────
+    buildCommand: |
+      pip install --upgrade pip &&
+      pip install -r backend/requirements-prod.txt
+
+    # ── Start ─────────────────────────────────────────────────────────────────
+    # Render injects $PORT automatically. Never hardcode a port here.
+    startCommand: >
+      uvicorn app.main:app
+      --host 0.0.0.0
+      --port $PORT
+      --workers 1
+      --log-level info
+
+    # Working directory for the start command
+    # Render runs from repo root, so set app dir via uvicorn's module path
+    # (app.main resolves relative to backend/ — see rootDir below)
+
+    rootDir: backend
+
+    # ── Health Check ──────────────────────────────────────────────────────────
+    healthCheckPath: /api/v1/health
+
+    # ── Plan ──────────────────────────────────────────────────────────────────
+    plan: free               # free | starter | standard | pro
+
+    # ── Auto-Deploy ───────────────────────────────────────────────────────────
+    autoDeploy: true
+
+    # ── Environment Variables ─────────────────────────────────────────────────
+    # Values marked as [REQUIRED] MUST be set in the Render Dashboard.
+    # Values marked as [OPTIONAL] have safe defaults for the free-tier deployment.
+    # NEVER commit real secrets — use the Render Dashboard for sensitive values.
+    envVars:
+      # Application
+      - key: APP_ENV
+        value: production
+
+      - key: APP_DEBUG
+        value: "false"
+
+      - key: LOG_LEVEL
+        value: INFO
+
+      # Security — [REQUIRED] Generate: python -c "import secrets; print(secrets.token_hex(32))"
+      - key: SECRET_KEY
+        generateValue: true      # Render auto-generates a secure value on first deploy
+
+      # Database — [REQUIRED] Set to your Render PostgreSQL internal URL
+      # Format: postgresql+asyncpg://user:pass@host:5432/dbname
+      # Copy the "Internal Database URL" from your Render PostgreSQL dashboard
+      # and change the scheme from postgresql:// to postgresql+asyncpg://
+      - key: DATABASE_URL
+        fromDatabase:
+          name: flood-x-db
+          property: connectionString
+
+      # Alembic uses psycopg2 (sync) driver for migrations
+      # Set manually after deploying the DB service
+      - key: DATABASE_SYNC_URL
+        sync: false             # Set manually in Render Dashboard
+
+      # CORS — [REQUIRED] Set to your Vercel frontend URL after first deploy
+      # Example: https://flood-x.vercel.app
+      # Separate multiple origins with commas (no spaces)
+      - key: CORS_ORIGINS
+        value: ""               # REPLACE with your Vercel URL
+
+      # ML Models — points to backend/models/ in the deployed service
+      - key: ML_MODELS_DIR
+        value: ./models
+
+      # Data Providers — use synthetic mode (no external APIs required)
+      - key: RAINFALL_PROVIDER
+        value: synthetic
+
+      - key: TERRAIN_PROVIDER
+        value: synthetic
+
+      - key: DRAINAGE_PROVIDER
+        value: synthetic
+
+      # Simulation defaults
+      - key: SIMULATION_TICK_SECONDS
+        value: "5"
+
+      - key: DEFAULT_SCENARIO
+        value: normal_rainfall
+
+      # Geospatial — Chennai pilot area
+      - key: PILOT_CITY
+        value: Chennai
+
+      # Optional: IMD API (leave unset to use synthetic data)
+      # - key: IMD_API_KEY
+      #   sync: false
+
+# ==============================================================================
+# Database (Render PostgreSQL — Free Tier)
+# Note: Free tier PostgreSQL does NOT include PostGIS extension.
+# The application runs in synthetic simulation mode and degrades gracefully
+# if the database is unavailable or PostGIS is missing.
+# ==============================================================================
+databases:
+  - name: flood-x-db
+    databaseName: floodx
+    user: floodx
+    plan: free               # free | starter (starter has backups + no sleep)
+    region: oregon           # Must match the web service region

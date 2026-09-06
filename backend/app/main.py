@@ -6,12 +6,13 @@ SIH 2026 — Problem Statement SIH26085
 """
 
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator
+from typing import AsyncGenerator, Callable
 
 import structlog
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
+from starlette.types import ASGIApp, Receive, Scope, Send
 
 from app.core.config import settings
 from app.core.logging import configure_logging
@@ -62,6 +63,28 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     await engine.dispose()
 
 
+class WebSocketCORSBypass:
+    """
+    ASGI middleware that lets WebSocket connections bypass CORSMiddleware.
+
+    Starlette 1.x changed WebSocket CORS handling — connections from Vite's
+    proxy are rejected even with allow_origins=["*"]. This middleware routes
+    WebSocket scopes directly to the underlying app, skipping CORS entirely.
+    HTTP requests are still routed through CORSMiddleware normally.
+    """
+    def __init__(self, app: ASGIApp, cors_app: ASGIApp) -> None:
+        self._app = app         # underlying FastAPI app (no CORS)
+        self._cors_app = cors_app  # FastAPI app wrapped with CORSMiddleware
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] == "websocket":
+            # WebSocket: bypass CORS, go straight to the app
+            await self._app(scope, receive, send)
+        else:
+            # HTTP/lifespan: apply CORS normally
+            await self._cors_app(scope, receive, send)
+
+
 def create_app() -> FastAPI:
     """Create and configure the FastAPI application."""
     app = FastAPI(
@@ -79,14 +102,9 @@ def create_app() -> FastAPI:
     )
 
     # ── Middleware ──────────────────────────────────────────────────────────────
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=settings.cors_origins_list,
-        allow_origin_regex=settings.CORS_ORIGINS_REGEX,  # covers *.vercel.app, *.railway.app
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
+    # NOTE: CORSMiddleware is NOT added here.
+    # It is applied selectively in _build_asgi_app() for HTTP only.
+    # WebSocket connections bypass CORS via WebSocketCORSBypass.
     app.add_middleware(GZipMiddleware, minimum_size=1000)
 
     # ── Routers ─────────────────────────────────────────────────────────────────
@@ -111,4 +129,29 @@ def create_app() -> FastAPI:
     return app
 
 
-app = create_app()
+def _build_asgi_app():
+    """
+    Build the final ASGI app with WebSocket CORS bypass.
+
+    Architecture:
+      Request → WebSocketCORSBypass
+                  ├─ WebSocket scope → FastAPI app directly (no CORS block)
+                  └─ HTTP scope     → FastAPI app with CORSMiddleware applied
+    """
+    fastapi_app = create_app()
+
+    # Build a CORS-wrapped version for HTTP requests
+    from starlette.middleware.cors import CORSMiddleware as _CORS
+    cors_wrapped = _CORS(
+        fastapi_app,
+        allow_origins=settings.cors_origins_list,
+        allow_origin_regex=settings.CORS_ORIGINS_REGEX,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
+    return WebSocketCORSBypass(app=fastapi_app, cors_app=cors_wrapped)
+
+
+app = _build_asgi_app()

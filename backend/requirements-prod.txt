@@ -1,0 +1,61 @@
+# ==============================================================================
+# FLOOD-X Backend — Production Requirements
+# Used by Render deployment (pip install -r requirements-prod.txt)
+#
+# EXCLUDES:
+#   - geopandas, fiona, rasterio  (require GDAL; not needed in synthetic mode)
+#   - pytest, black, ruff, mypy, pre-commit  (dev/test tooling)
+#
+# The application runs in SYNTHETIC data mode on Render.
+# Set RAINFALL_PROVIDER=synthetic, TERRAIN_PROVIDER=synthetic, DRAINAGE_PROVIDER=synthetic
+# ==============================================================================
+
+# ── Core API Framework ─────────────────────────────────────────────────────────
+fastapi==0.115.12
+uvicorn[standard]==0.34.3
+websockets==15.0.1
+python-multipart==0.0.20
+
+# ── Data Validation ────────────────────────────────────────────────────────────
+pydantic==2.11.3
+pydantic-settings==2.9.1
+email-validator==2.2.0
+
+# ── Database ───────────────────────────────────────────────────────────────────
+sqlalchemy==2.0.41
+alembic==1.15.2
+psycopg2-binary==2.9.10
+asyncpg==0.30.0
+# geoalchemy2 excluded — PostGIS extension not used in free-tier deployment
+# If PostGIS is available, add: geoalchemy2==0.17.1
+
+# ── Scientific / Numerical ────────────────────────────────────────────────────
+numpy==2.2.4
+scipy==1.15.2
+pandas==2.2.3
+
+# ── Geospatial (pure-Python, no GDAL required) ────────────────────────────────
+shapely==2.0.7
+pyproj==3.7.1
+# NOTE: geopandas, fiona, rasterio are NOT included here.
+# They require system-level GDAL which is unavailable on Render's free tier.
+# The backend gracefully runs in synthetic simulation mode without them.
+
+# ── Graph ──────────────────────────────────────────────────────────────────────
+networkx==3.4.2
+
+# ── Machine Learning ──────────────────────────────────────────────────────────
+scikit-learn==1.6.1
+xgboost==2.1.4
+lightgbm==4.6.0
+joblib==1.4.2
+imbalanced-learn==0.13.0
+
+# ── Utilities ─────────────────────────────────────────────────────────────────
+python-dotenv==1.1.0
+structlog==25.1.0
+httpx==0.28.1
+tenacity==9.1.2
+orjson==3.10.16
+python-jose[cryptography]==3.4.0
+passlib[bcrypt]==1.7.4

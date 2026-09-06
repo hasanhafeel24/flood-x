@@ -67,11 +67,16 @@ build/
 # ── Environment / Secrets ──────────────────────────────────────────────────────
 .env
 .env.local
+.env.development
+.env.production
 .env.development.local
 .env.test.local
 .env.production.local
 *.env
+# Allow example / template files (no real secrets)
 !.env.example
+!.env.development.example
+!.env.production.example
 
 # ── IDE / Editor ───────────────────────────────────────────────────────────────
 .vscode/settings.json
@@ -96,14 +101,15 @@ docker-compose.override.yml
 pgdata/
 
 # ── ML Models (large binaries) ────────────────────────────────────────────────
-# Committed model checkpoints only if small and intentional
-models/*.pkl
-models/*.joblib
+# Large model formats are gitignored; small committed models are allowed.
+# models/*.pkl is NOT ignored — scaler_v1.pkl (919 B) is needed by Render.
+# To gitignore large pkl files selectively, add them individually.
 models/*.bin
 models/*.pt
 models/*.pth
-# Allow metadata and evaluation results
+# Allow all JSON models and metadata
 !models/*.json
+!models/*.pkl
 !models/*.md
 
 # ── Data (large files) ─────────────────────────────────────────────────────────
