@@ -56,6 +56,11 @@ services:
     # Values marked as [OPTIONAL] have safe defaults for the free-tier deployment.
     # NEVER commit real secrets — use the Render Dashboard for sensitive values.
     envVars:
+      # Python version — MUST match .python-version at repo root
+      # Render defaults to Python 3.14 if this is not set, breaking scipy/numpy
+      - key: PYTHON_VERSION
+        value: "3.11.9"
+
       # Application
       - key: APP_ENV
         value: production
