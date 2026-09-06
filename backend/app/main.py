@@ -27,6 +27,7 @@ from app.routers import (
     system,
     decisions,
     demo,
+    explain,
 )
 from app.websocket.manager import ws_manager
 
@@ -90,16 +91,17 @@ def create_app() -> FastAPI:
 
     # ── Routers ─────────────────────────────────────────────────────────────────
     prefix = "/api/v1"
-    app.include_router(health.router, prefix=prefix, tags=["health"])
-    app.include_router(rainfall.router, prefix=prefix, tags=["rainfall"])
-    app.include_router(flood.router, prefix=prefix, tags=["flood"])
-    app.include_router(drainage.router, prefix=prefix, tags=["drainage"])
-    app.include_router(routing.router, prefix=prefix, tags=["routing"])
-    app.include_router(alerts.router, prefix=prefix, tags=["alerts"])
+    app.include_router(health.router,     prefix=prefix, tags=["health"])
+    app.include_router(rainfall.router,   prefix=prefix, tags=["rainfall"])
+    app.include_router(flood.router,      prefix=prefix, tags=["flood"])
+    app.include_router(drainage.router,   prefix=prefix, tags=["drainage"])
+    app.include_router(routing.router,    prefix=prefix, tags=["routing"])
+    app.include_router(alerts.router,     prefix=prefix, tags=["alerts"])
     app.include_router(simulation.router, prefix=prefix, tags=["simulation"])
-    app.include_router(system.router, prefix=prefix, tags=["system"])
-    app.include_router(decisions.router, prefix=prefix, tags=["decisions"])
-    app.include_router(demo.router, prefix=prefix, tags=["demo"])
+    app.include_router(system.router,     prefix=prefix, tags=["system"])
+    app.include_router(decisions.router,  prefix=prefix, tags=["decisions"])
+    app.include_router(demo.router,       prefix=prefix, tags=["demo"])
+    app.include_router(explain.router,    prefix=prefix, tags=["explain"])  # XGBoost explainability
 
     # ── WebSocket ───────────────────────────────────────────────────────────────
     @app.websocket("/ws")

@@ -225,6 +225,154 @@ class FloodMLPredictor:
             model_used="rule_based_fallback",
         )
 
+    def explain_prediction(
+        self,
+        rainfall_intensity_mm_hr: float,
+        accumulated_rainfall_mm: float,
+        drainage_utilization_pct: float,
+        drainage_surcharging_nodes: int,
+        catchment_imperviousness: float,
+        catchment_cn: int,
+        terrain_elevation_m: float,
+        terrain_susceptibility: float,
+        antecedent_moisture_mm: float,
+        horizon_minutes: int = 60,
+    ) -> Dict:
+        """
+        Return per-feature contributions for a prediction (XGBoost gain-weighted).
+
+        Methodology:
+          contribution_i = feature_importance_i × normalized_feature_value_i
+          Normalized relative to all 14 features for this sample.
+
+        This is an approximation of SHAP marginal contributions.
+        True SHAP requires the `shap` library; this uses XGBoost's built-in
+        feature_importances_ (gain) weighted by feature magnitude.
+
+        Returns dict with:
+          - contributions: list of {feature, value, raw_value, direction, rank}
+          - flood_probability: float
+          - model_used: str
+        """
+        rainfall_duration_hr = max(0.5, accumulated_rainfall_mm / max(rainfall_intensity_mm_hr, 0.1))
+        time_since_last_rain_hr = 0.0
+
+        pred = self.predict(
+            rainfall_intensity_mm_hr=rainfall_intensity_mm_hr,
+            rainfall_duration_hr=rainfall_duration_hr,
+            accumulated_rainfall_mm=accumulated_rainfall_mm,
+            drainage_utilization_pct=drainage_utilization_pct,
+            drainage_surcharging_nodes=drainage_surcharging_nodes,
+            catchment_imperviousness=catchment_imperviousness,
+            catchment_cn=catchment_cn,
+            catchment_area_ha=350.0,
+            terrain_elevation_m=terrain_elevation_m,
+            terrain_slope_pct=0.5,
+            terrain_susceptibility=terrain_susceptibility,
+            antecedent_moisture_mm=antecedent_moisture_mm,
+            time_since_last_rain_hr=time_since_last_rain_hr,
+            horizon_minutes=horizon_minutes,
+        )
+
+        # Raw feature values for all 14 features
+        raw_values = [
+            rainfall_intensity_mm_hr,
+            rainfall_duration_hr,
+            accumulated_rainfall_mm,
+            drainage_utilization_pct,
+            float(drainage_surcharging_nodes),
+            catchment_imperviousness,
+            float(catchment_cn),
+            350.0,           # catchment_area_ha
+            terrain_elevation_m,
+            0.5,             # terrain_slope_pct
+            terrain_susceptibility,
+            antecedent_moisture_mm,
+            time_since_last_rain_hr,
+            float(horizon_minutes),
+        ]
+
+        # Normalize features 0–1 for contribution calculation
+        feature_ranges = [
+            150.0,   # rainfall_intensity_mm_hr (max 150)
+            12.0,    # rainfall_duration_hr
+            300.0,   # accumulated_rainfall_mm
+            200.0,   # drainage_utilization_pct
+            30.0,    # drainage_surcharging_nodes
+            1.0,     # catchment_imperviousness
+            100.0,   # catchment_cn
+            1000.0,  # catchment_area_ha
+            20.0,    # terrain_elevation_m
+            5.0,     # terrain_slope_pct
+            1.0,     # terrain_susceptibility
+            100.0,   # antecedent_moisture_mm
+            72.0,    # time_since_last_rain_hr
+            180.0,   # horizon_minutes
+        ]
+        normalized = [min(1.0, abs(v) / r) for v, r in zip(raw_values, feature_ranges)]
+
+        # Get XGBoost feature importances if loaded
+        if self._loaded and self._classifier is not None:
+            try:
+                importances = self._classifier.feature_importances_
+            except Exception:
+                importances = np.ones(14) / 14.0
+        else:
+            # Fallback importances from ML model card
+            importances = np.array([
+                0.3449, 0.0760, 0.3324, 0.0197, 0.0514,
+                0.0481, 0.0220, 0.0050, 0.0182, 0.0050,
+                0.0287, 0.0388, 0.0050, 0.0048,
+            ])
+
+        # Contribution = importance × normalized_magnitude
+        contributions_raw = importances * np.array(normalized)
+        total = max(contributions_raw.sum(), 1e-9)
+
+        human_names = {
+            "rainfall_intensity_mm_hr":   "Rainfall Intensity",
+            "rainfall_duration_hr":       "Rainfall Duration",
+            "accumulated_rainfall_mm":    "Accumulated Rainfall",
+            "drainage_utilization_pct":   "Drainage Utilization",
+            "drainage_surcharging_nodes": "Surcharging Nodes",
+            "catchment_imperviousness":   "Catchment Imperviousness",
+            "catchment_cn":               "SCS Curve Number",
+            "catchment_area_ha":          "Catchment Area",
+            "terrain_elevation_m":        "Terrain Elevation",
+            "terrain_slope_pct":          "Terrain Slope",
+            "terrain_susceptibility":     "Terrain Susceptibility",
+            "antecedent_moisture_mm":     "Antecedent Moisture",
+            "time_since_last_rain_hr":    "Time Since Rain",
+            "horizon_minutes":            "Forecast Horizon",
+        }
+
+        contributions = []
+        for i, fname in enumerate(FEATURE_NAMES):
+            pct = float(contributions_raw[i] / total * 100)
+            contributions.append({
+                "feature": fname,
+                "label": human_names.get(fname, fname),
+                "raw_value": round(raw_values[i], 3),
+                "importance": round(float(importances[i]), 4),
+                "contribution_pct": round(pct, 2),
+                "direction": "increases_risk" if raw_values[i] > 0 else "neutral",
+            })
+
+        contributions.sort(key=lambda x: x["contribution_pct"], reverse=True)
+        for i, c in enumerate(contributions):
+            c["rank"] = i + 1
+
+        return {
+            "flood_probability": pred.flood_probability,
+            "flood_depth_cm": pred.flood_depth_cm,
+            "confidence": pred.confidence,
+            "model_used": pred.model_used,
+            "contributions": contributions,
+            "methodology": "XGBoost gain-weighted feature contribution (approximation of SHAP marginal values)",
+            "data_source": "SYNTHETIC_PROTOTYPE",
+            "disclaimer": "Feature contributions are approximate. Install shap library for exact Shapley values.",
+        }
+
     def predict_batch(self, feature_dicts: List[Dict]) -> List[MLPrediction]:
         """Batch prediction for multiple locations/horizons."""
         return [self.predict(**fd) for fd in feature_dicts]

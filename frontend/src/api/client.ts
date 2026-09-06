@@ -78,6 +78,12 @@ export const floodxApi = {
     phases: () => api.get('/demo/phases').then(r => r.data),
   },
 
+  explain: {
+    featureImportance: () => api.get('/explain/feature-importance').then(r => r.data),
+    prediction: (params?: { intensity?: number; accumulated?: number; utilization?: number; horizon_minutes?: number }) =>
+      api.get('/explain/prediction', { params }).then(r => r.data),
+  },
+
   graph: {
     info: () => api.get('/routes/graph-info').then(r => r.data),
   },
