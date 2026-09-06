@@ -40,7 +40,9 @@ class Settings(BaseSettings):
     JWT_EXPIRE_MINUTES: int = 60
 
     # ── CORS ───────────────────────────────────────────────────────────────────
-    CORS_ORIGINS: str = "http://localhost:5173,http://localhost:3000"
+    CORS_ORIGINS: str = "http://localhost:5173,http://localhost:3000,http://localhost:5174"
+    # Regex to allow any Railway/Vercel/Render preview URL automatically
+    CORS_ORIGINS_REGEX: str = r"https://.*\.(vercel\.app|railway\.app|onrender\.com|up\.railway\.app)"
 
     @property
     def cors_origins_list(self) -> List[str]:
@@ -65,7 +67,8 @@ class Settings(BaseSettings):
     PILOT_BBOX_NORTH: float = 13.10
 
     # ── ML ─────────────────────────────────────────────────────────────────────
-    ML_MODELS_DIR: str = "./models"
+    # Resolves to /app/models in Docker, or ../models in local dev
+    ML_MODELS_DIR: str = "../models"
     ML_PRIMARY_MODEL: str = "xgboost_v1"
     ML_CONFIDENCE_THRESHOLD: float = 0.5
 

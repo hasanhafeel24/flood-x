@@ -40,20 +40,19 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     configure_logging()
     log.info("flood_x_startup", version=settings.APP_VERSION, env=settings.APP_ENV)
 
-    # Create database tables if they don't exist (dev convenience)
-    # In production, use: alembic upgrade head
+    # Create database tables if they don't exist
+    # In production with Alembic: alembic upgrade head
     # Graceful fallback: backend works in SIMULATION mode without PostgreSQL
-    if settings.APP_ENV == "development":
-        try:
-            async with engine.begin() as conn:
-                await conn.run_sync(Base.metadata.create_all)
-            log.info("database_tables_initialized")
-        except Exception as db_err:
-            log.warning(
-                "database_unavailable_simulation_mode",
-                error=str(db_err),
-                mode="SYNTHETIC_SIMULATION — no persistence",
-            )
+    try:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        log.info("database_tables_initialized")
+    except Exception as db_err:
+        log.warning(
+            "database_unavailable_simulation_mode",
+            error=str(db_err),
+            mode="SYNTHETIC_SIMULATION — no persistence",
+        )
 
     log.info("flood_x_ready", host=settings.BACKEND_HOST, port=settings.BACKEND_PORT)
     yield
@@ -83,6 +82,7 @@ def create_app() -> FastAPI:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins_list,
+        allow_origin_regex=settings.CORS_ORIGINS_REGEX,  # covers *.vercel.app, *.railway.app
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],

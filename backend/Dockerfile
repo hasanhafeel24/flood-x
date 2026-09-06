@@ -6,7 +6,9 @@ FROM python:3.11-slim-bookworm
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=1
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    ML_MODELS_DIR=/app/models \
+    APP_ENV=production
 
 # Install system dependencies for geospatial packages
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -30,9 +32,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY app/ ./app/
 COPY run.py .
 
-# Create models dir and copy pre-trained models if present
-# (can also be volume-mounted at runtime)
+# Copy pre-trained ML models (built from scripts/train_models.py)
 RUN mkdir -p /app/models
+COPY models/ /app/models/
 
 # Create non-root user
 RUN useradd -m -u 1000 floodx && chown -R floodx:floodx /app
