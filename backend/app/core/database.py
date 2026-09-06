@@ -11,6 +11,17 @@ class Base(DeclarativeBase):
     pass
 
 
+# ── Import all models so Base.metadata knows about every table ────────────────
+# This ensures create_all() and Alembic autogenerate both work correctly.
+# noqa: F401 — imports are side-effect-only (register with metadata)
+def _import_models() -> None:
+    from app.models.flood_event import FloodEvent       # noqa: F401
+    from app.models.alert_log import AlertLog            # noqa: F401
+    from app.models.simulation_run import SimulationRun  # noqa: F401
+
+_import_models()
+
+
 engine = create_async_engine(
     settings.DATABASE_URL,
     echo=settings.APP_DEBUG,
