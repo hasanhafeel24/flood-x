@@ -31,8 +31,22 @@ except ImportError:
     _ML_AVAILABLE = False
     log.warning("ml_libraries_not_available", fallback="rule-based prediction")
 
-MODELS_DIR = Path(__file__).parent.parent.parent.parent.parent / "models"
 MODEL_VERSION = "v1"
+
+def _resolve_models_dir() -> Path:
+    from app.core.config import settings
+    candidates = [
+        Path(settings.ML_MODELS_DIR),
+        Path("models"),
+        Path(__file__).parent.parent.parent.parent / "models",
+        Path(__file__).parent.parent.parent.parent.parent / "models",
+    ]
+    for c in candidates:
+        if (c / f"xgboost_classifier_{MODEL_VERSION}.json").exists():
+            return c
+    return candidates[0]
+
+MODELS_DIR = _resolve_models_dir()
 
 FEATURE_NAMES = [
     "rainfall_intensity_mm_hr",

@@ -1,0 +1,71 @@
+{
+  "model_version": "v1",
+  "trained_at": "2026-09-05T17:29:13Z",
+  "data_source": "SYNTHETIC_PROTOTYPE",
+  "data_warning": "Model trained on synthetic data only. NOT validated against real Chennai flood events.",
+  "n_samples": 8000,
+  "n_train": 6400,
+  "n_test": 1600,
+  "features": [
+    "rainfall_intensity_mm_hr",
+    "rainfall_duration_hr",
+    "accumulated_rainfall_mm",
+    "drainage_utilization_pct",
+    "drainage_surcharging_nodes",
+    "catchment_imperviousness",
+    "catchment_cn",
+    "catchment_area_ha",
+    "terrain_elevation_m",
+    "terrain_slope_pct",
+    "terrain_susceptibility",
+    "antecedent_moisture_mm",
+    "time_since_last_rain_hr",
+    "horizon_minutes"
+  ],
+  "n_features": 14,
+  "train_test_split": 0.8,
+  "random_state": 42,
+  "classifier": {
+    "model": "XGBoostClassifier",
+    "target": "flood_occurred",
+    "n_estimators": 300,
+    "accuracy": 0.9738,
+    "f1_score": 0.9856,
+    "roc_auc": 0.9979,
+    "feature_importances": {
+      "rainfall_intensity_mm_hr": 0.3448815643787384,
+      "rainfall_duration_hr": 0.07600237429141998,
+      "accumulated_rainfall_mm": 0.3323605954647064,
+      "drainage_utilization_pct": 0.04783892631530762,
+      "drainage_surcharging_nodes": 0.051446665078401566,
+      "catchment_imperviousness": 0.048074547201395035,
+      "catchment_cn": 0.015882153064012527,
+      "catchment_area_ha": 0.007703786250203848,
+      "terrain_elevation_m": 0.016617221757769585,
+      "terrain_slope_pct": 0.006626292131841183,
+      "terrain_susceptibility": 0.020848626270890236,
+      "antecedent_moisture_mm": 0.013363435864448547,
+      "time_since_last_rain_hr": 0.009883181191980839,
+      "horizon_minutes": 0.008470593020319939
+    },
+    "file": "H:\\flood-x\\models\\xgboost_classifier_v1.json"
+  },
+  "regressor": {
+    "model": "XGBoostRegressor",
+    "target": "flood_depth_cm",
+    "n_estimators": 300,
+    "n_flooded_train": 5904,
+    "metrics": {
+      "mae_cm": 10.638,
+      "r2": 0.9948
+    },
+    "file": "H:\\flood-x\\models\\xgboost_regressor_v1.json"
+  },
+  "limitations": [
+    "Trained entirely on SYNTHETIC_PROTOTYPE data",
+    "Not validated against real historical flood events",
+    "Performance on real data may differ significantly",
+    "Suitable for prototype demonstration only",
+    "Replace with real observational data for production deployment"
+  ]
+}
