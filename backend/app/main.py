@@ -122,8 +122,15 @@ def create_app() -> FastAPI:
     app.include_router(explain.router,    prefix=prefix, tags=["explain"])  # XGBoost explainability
 
     # ── WebSocket ───────────────────────────────────────────────────────────────
+    # Primary endpoint at /ws (local dev via Vite proxy)
     @app.websocket("/ws")
     async def websocket_endpoint(websocket):
+        await ws_manager.handle_connection(websocket)
+
+    # Secondary endpoint at /api/v1/ws for production (Render proxy passes
+    # /api/ paths through; bare /ws path returns 404 on some proxy configs)
+    @app.websocket("/api/v1/ws")
+    async def websocket_endpoint_api(websocket):
         await ws_manager.handle_connection(websocket)
 
     return app
