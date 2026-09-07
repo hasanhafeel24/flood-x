@@ -13,15 +13,17 @@ import { useFloodXStore } from '@/store'
 const WS_URL = import.meta.env.VITE_WS_URL
   ?? `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/ws`
 
-const RECONNECT_DELAY_MS  = 3000
-const HEARTBEAT_INTERVAL  = 10_000   // 10s ping to keep proxy alive
-const STALE_THRESHOLD_MS  = 15_000   // mark STALE if silent for 15s
+const RECONNECT_DELAY_MS  = 3000    // 3s initial reconnect
+const RECONNECT_MAX_MS    = 30_000  // 30s cap (handles Render cold-start ~30-60s)
+const HEARTBEAT_INTERVAL  = 10_000  // 10s ping to keep proxy alive
+const STALE_THRESHOLD_MS  = 15_000  // mark STALE if silent for 15s
 
 export function useWebSocket() {
-  const wsRef          = useRef<WebSocket | null>(null)
-  const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const heartbeatTimer = useRef<ReturnType<typeof setInterval> | null>(null)
-  const staleTimer     = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const wsRef           = useRef<WebSocket | null>(null)
+  const reconnectTimer  = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const heartbeatTimer  = useRef<ReturnType<typeof setInterval> | null>(null)
+  const staleTimer      = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const reconnectDelay  = useRef(RECONNECT_DELAY_MS)  // starts at 3s, backs off
 
   const { setWsConnected, setWsStale, handleWsMessage } = useFloodXStore()
 
@@ -55,6 +57,7 @@ export function useWebSocket() {
     wsRef.current = ws
 
     ws.onopen = () => {
+      reconnectDelay.current = RECONNECT_DELAY_MS  // reset back-off on success
       setWsConnected(true)
       setWsStale(false)
       startHeartbeat(ws)
@@ -77,8 +80,12 @@ export function useWebSocket() {
       setWsConnected(false)
       stopHeartbeat()
       staleTimer.current && clearTimeout(staleTimer.current)
-      console.warn('[FLOOD-X WS] Disconnected — reconnecting in 3s')
-      reconnectTimer.current = setTimeout(connect, RECONNECT_DELAY_MS)
+      // Exponential back-off: 3s → 6s → 12s → 24s → 30s (cap)
+      // Handles Render free-tier cold-start which takes 30-60s to wake
+      const delay = reconnectDelay.current
+      reconnectDelay.current = Math.min(delay * 2, RECONNECT_MAX_MS)
+      console.warn(`[FLOOD-X WS] Disconnected — reconnecting in ${delay / 1000}s`)
+      reconnectTimer.current = setTimeout(connect, delay)
     }
 
     ws.onerror = (e) => {
