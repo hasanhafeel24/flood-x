@@ -93,7 +93,7 @@ services:
       # Example: https://flood-x.vercel.app
       # Separate multiple origins with commas (no spaces)
       - key: CORS_ORIGINS
-        value: ""               # REPLACE with your Vercel URL
+        value: "https://flood-x-app.vercel.app"
 
       # ML Models — points to backend/models/ in the deployed service
       - key: ML_MODELS_DIR
